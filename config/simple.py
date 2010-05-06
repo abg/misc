@@ -7,38 +7,54 @@
 """Parse ini files"""
 
 import re
-from datastructures import OrderedMultiDict
 
 # Meant to parse my.cnf files that may have multiple values per key
 # inspired by mercurial's awesomely terse config.py
-def parse(iterable, include=None):
+def parse(iterable, cfgcls=dict, include=None):
+    """Parse an iterable source of lines as an ini file and return a dict-like
+    object - an instance of cfgclass
+
+    :param iterable: any iterable that provides line-oriented output
+                     ex. str.splitlines(), StringIO, open(), etc
+    :param cfgcls: dict-like object to use for configs.
+                   must have a __setitem__ and setdefault method at minimum
+    :param include: method to include other files when a !include[dir] line is
+                    encountered
+
+    :returns: instance of cfgcls
+    """
     sectionre = re.compile(r'\[([^\[]+)\]')
     itemre = re.compile(r'([^=\s]+)\s*(?:(?:=\s*)(.*\S|))?')
     emptyre = re.compile(r'(;|#|\s*$)')
-    includere = re.compile(r'!include\s+(\S|\S.*\S)\s*$')
+    includere = re.compile(r'(!include(?:dir)?)\s+(\S|\S.*\S)\s*$')
     section = None
 
-    d = OrderedMultiDict()
+    cfg = cfgcls()
     for lineno, line in enumerate(iterable):
-        m = includere.match(line)
-        if m:
-            include(m.group(1))
+        match = includere.match(line)
+        if match:
+            include(match.group(2), dir=match.group(1)!='!include')
             continue
         if emptyre.match(line):
             continue
-        m = sectionre.match(line)
-        if m:
-            section = m.group(1)
-            d.setdefault(section, d.__class__())
+        match = sectionre.match(line)
+        if match:
+            section = match.group(1)
+            cfg.setdefault(section, cfgcls())
             continue
-        m = itemre.match(line)
-        if m:
-            item = m.group(1)
-            value = m.group(2)
-            d[section][item] = value
+        match = itemre.match(line)
+        if match:
+            item = match.group(1)
+            value = match.group(2)
+            cfg[section][item] = value
             continue
         raise RuntimeError("Parse error. %d: %s" % (lineno + 1, line))
-    return d
+    return cfg
 
 def read(path):
+    """Read and return a parsed ini file
+
+    :param path: string path to read
+    :returns: dict-like object as returned by `parse`
+    """
     return parse(open(path, 'r'), read)
