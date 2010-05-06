@@ -45,7 +45,6 @@ class OrderedMultiDict(DictMixin, dict):
         self.update(kwargs)
 
     def __setitem__(self, key, value):
-        self.__key_order.append(key)
         try:
             list_value = super(OrderedMultiDict, self).__getitem__(key)
         except KeyError:
@@ -53,35 +52,18 @@ class OrderedMultiDict(DictMixin, dict):
             super(OrderedMultiDict, self).__setitem__(key, list_value)
 
         list_value.append(value)
+        self.__key_order.append(key)
 
     def __getitem__(self, key):
         list_value = super(OrderedMultiDict, self).__getitem__(key)
         return list_value[-1]
 
-    def get(self, key, default=None):
-        try:
-            return self[key]
-        except KeyError:
-            return default
+    def __delitem__(self, key):
+        super(OrderedMultiDict, self).__delitem__(key)
+        self.__key_order.remove(key)
 
     def getall(self, key):
         return super(OrderedMultiDict, self).__getitem__(key)
-
-    def update(self, other=None, **kwargs):
-        # Make progressively weaker assumptions about "other"
-        if other is None:
-            pass
-        elif hasattr(other, 'iteritems'):  # iteritems saves memory and lookups
-            for k, v in other.iteritems():
-                self[k] = v
-        elif hasattr(other, 'keys'):
-            for k in other.keys():
-                self[k] = other[k]
-        else:
-            for k, v in other:
-                self[k] = v
-        if kwargs:
-            self.update(kwargs)
 
     def __iter__(self):
         for k in self.__key_order:
@@ -104,3 +86,17 @@ class OrderedMultiDict(DictMixin, dict):
                                    "__key_order = %r self=%r" %
                                    (key, self.__key_order, self))
             yield key, value
+
+    def keys(self):
+        return list(self.__key_order)
+
+    def pop(self, key, *args):
+        try:
+            list_value = self.getall(key)
+            value = list_value.pop(-1)
+            if not list_value:
+                del self[key]
+            return value
+        except KeyError:
+            return super(OrderedMultiDict, self).pop(key, *args)
+
