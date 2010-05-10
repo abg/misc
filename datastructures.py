@@ -34,10 +34,12 @@ class OrderedMultiDict(DictMixin, dict):
     >>> foo(**omdict)
     {'a': ['1', '2', '10'], 'b': ['9']}
     """
+    # shim
+    __key_order = ()
+
     def __init__(self, arg=None, **kwargs):
         super(OrderedMultiDict, self).__init__()
         self.__key_order = []
-
         if arg is not None:
             if isinstance(arg, dict):
                 self.update(arg)
@@ -88,7 +90,7 @@ class OrderedMultiDict(DictMixin, dict):
         :returns: list of values
         :rtype: list
         """
-        return super(OrderedMultiDict, self).__getitem__(key)
+        return list(super(OrderedMultiDict, self).__getitem__(key))
 
     def iteritems(self):
         """Return an iterator over the dictionary's (key, value) pairs
@@ -145,5 +147,5 @@ class OrderedMultiDict(DictMixin, dict):
                 del self[key]
             return value
         except KeyError:
+            # key doesn't exist, so let DictMixin handle default value
             return super(OrderedMultiDict, self).pop(key, *args)
-
