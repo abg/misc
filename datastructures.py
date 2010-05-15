@@ -53,8 +53,11 @@ class OrderedMultiDict(DictMixin, dict):
 
         This removes all values and all keys from the dictionary
         """
-        super(OrderedMultiDict, self).__delitem__(key)
+        values = super(OrderedMultiDict, self).__getitem__(key)
+        values.pop(0)
         self.__key_order.remove(key)
+        if not values:
+            super(OrderedMultiDict, self).__delitem__(key)
 
     def __getitem__(self, key):
         """Fetch the last value set for the given key
