@@ -1,11 +1,19 @@
-import os
+import os, sys
 import re
 from datastructures import OrderedMultiDict
 
+class ParseError(Exception):
+    def __init__(self, config, errors):
+        Exception.__init__(self, config, errors)
+        self.config = config
+        self.errors = errors
+
+
 def parse(iterable):
     config = OrderedMultiDict()
-    itemcre = re.compile(r'(?P<key>[^=\s]+)\s*(?:(?:=\s*)(?P<value>.*\S|))?')
-    for line in iterable:
+    itemcre = re.compile(r'(?P<key>\s*[^=\s]+)\s*(?:(?:=\s*)(?P<value>.*\S|))?')
+    errors = []
+    for line_number, line in enumerate(iterable):
         if line.lstrip().startswith('['):
             section = line.strip()[1:-1].strip()
             config[section] = OrderedMultiDict()
@@ -14,14 +22,19 @@ def parse(iterable):
         elif line.strip()[0] in '#;': # comment characters
             continue # skip comments
         else:
-            if '=' in line:
-                m = itemcre.match(line)
-                if m:
-                    key, value = m.group('key', 'value')
-                    section = config.keys()[-1]
-                    config[section][key] = _dequote(value)
-                else:
-                    errors.append(SyntaxError(line))
+            m = itemcre.match(line)
+            if m:
+                key, value = m.group('key', 'value')
+                section = config.keys()[-1]
+                config[section][key] = value and _dequote(value) or value
+            else:
+                filename = getattr(iterable, 'name', '<unknown>')
+                errors.append(SyntaxError('Invalid key-value', (filename, 
+                                                                line_number,
+                                                                0,
+                                                                line)))
+    if errors:
+        raise ParseError(config, errors)
     return config
 
 def _dequote(value):
@@ -54,9 +67,9 @@ def _requote(value):
         ' '  : 's',
         '"'  : '"'
     }
-    return re.sub(r'(["\b\t\n\r\\ ])',
-                  lambda m: "\\%s" % MYSQL_META[m.group(1)],
-                  value)
+    return '"%s"' % re.sub(r'(["\b\t\n\r\\ ])',
+                           lambda m: "\\%s" % MYSQL_META[m.group(1)],
+                           value)
 
 def stringify(config):
     lines = []
@@ -67,4 +80,5 @@ def stringify(config):
                 lines.append(key)
             else:
                 lines.append("%s = %s" % (key, _requote(value)))
+    lines.append('')
     return os.linesep.join(lines)

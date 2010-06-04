@@ -53,11 +53,9 @@ class OrderedMultiDict(DictMixin, dict):
 
         This removes all values and all keys from the dictionary
         """
-        values = super(OrderedMultiDict, self).__getitem__(key)
-        values.pop(0)
-        self.__key_order.remove(key)
-        if not values:
-            super(OrderedMultiDict, self).__delitem__(key)
+        super(OrderedMultiDict, self).__delitem__(key)
+        while key in self.__key_order:
+            self.__key_order.remove(key)
 
     def __getitem__(self, key):
         """Fetch the last value set for the given key
@@ -113,9 +111,10 @@ class OrderedMultiDict(DictMixin, dict):
                 i = iter(self.getall(key))
                 track[key] = i
 
-            try:
+            # this should never happen and I don't have a direct test case for this
+            try: # pragma: no cover
                 value = i.next()
-            except StopIteration:
+            except StopIteration: # pragma: no cover
                 #  If this is raised, this is an internal consistency issue
                 raise RuntimeError("Internal consistency problem with key %s."
                                    "__key_order = %r self=%r" %
@@ -144,7 +143,7 @@ class OrderedMultiDict(DictMixin, dict):
         :returns: last set value for the given key
         """
         try:
-            list_value = self.getall(key)
+            list_value = super(OrderedMultiDict, self).__getitem__(key)
             value = list_value.pop(-1)
             if not list_value:
                 del self[key]
