@@ -111,7 +111,9 @@ class OrderedMultiDict(DictMixin, dict):
                 i = iter(self.getall(key))
                 track[key] = i
 
-            # this should never happen and I don't have a direct test case for this
+            # this should never happen, and should be tested
+            # around by other test cases.  clipping it from
+            # coverage reports
             try: # pragma: no cover
                 value = i.next()
             except StopIteration: # pragma: no cover

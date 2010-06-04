@@ -1,8 +1,24 @@
-import os, sys
+"""Parse my.cnf files, maintaining section/key order and supporting multiple
+values per key in some semi-sane way
+"""
+
+import os
 import re
-from datastructures import OrderedMultiDict
+from ak47.datastructures import OrderedMultiDict
+
+__all__ = [
+    'ParseError',
+    'parse',
+    'stringify',
+]
 
 class ParseError(Exception):
+    """Raised when there is an error parsing a my.cnf file
+    
+    :attribute config: config that would have been returned, were there no 
+                       parse errors
+    :attribute errors: list of SyntaxErrors that were encountered
+    """
     def __init__(self, config, errors):
         Exception.__init__(self, config, errors)
         self.config = config
@@ -10,6 +26,10 @@ class ParseError(Exception):
 
 
 def parse(iterable):
+    """Parse an iterable source of lines representing a my.cnf file
+
+    iterable may be a file-like object, a list or a line-yielding generator
+    """
     config = OrderedMultiDict()
     itemcre = re.compile(r'(?P<key>\s*[^=\s]+)\s*(?:(?:=\s*)(?P<value>.*\S|))?')
     errors = []
@@ -22,9 +42,9 @@ def parse(iterable):
         elif line.strip()[0] in '#;': # comment characters
             continue # skip comments
         else:
-            m = itemcre.match(line)
-            if m:
-                key, value = m.group('key', 'value')
+            match = itemcre.match(line)
+            if match:
+                key, value = match.group('key', 'value')
                 section = config.keys()[-1]
                 config[section][key] = value and _dequote(value) or value
             else:
@@ -40,11 +60,11 @@ def parse(iterable):
 def _dequote(value):
     """Remove quotes from a string."""
     if len(value) > 1 and value[0] == '"' and value[-1] == '"':
-            value = value[1:-1]
+        value = value[1:-1]
 
     # substitute meta characters per:
     # http://dev.mysql.com/doc/refman/5.0/en/option-files.html
-    MYSQL_META = {
+    mysql_meta = {
         'b' : "\b",
         't' : "\t",
         'n' : "\n",
@@ -54,11 +74,13 @@ def _dequote(value):
         '"' : '"',
     }
     return re.sub(r'\\(["btnr\\s])',
-                  lambda m: MYSQL_META[m.group(1)],
+                  lambda match: mysql_meta[match.group(1)],
                   value)
 
 def _requote(value):
-    MYSQL_META = {
+    """Add quotes to a my.cnf value part of a key/value pair per
+    the documentation of MySQL option files"""
+    mysql_meta = {
         '\b' : 'b',
         '\t' : 't',
         '\n' : 'n',
@@ -68,10 +90,11 @@ def _requote(value):
         '"'  : '"'
     }
     return '"%s"' % re.sub(r'(["\b\t\n\r\\ ])',
-                           lambda m: "\\%s" % MYSQL_META[m.group(1)],
+                           lambda match: "\\%s" % mysql_meta[match.group(1)],
                            value)
 
 def stringify(config):
+    """Convert a cnf dict-like object to a text string"""
     lines = []
     for section in config:
         lines.append('[%s]' % section)
