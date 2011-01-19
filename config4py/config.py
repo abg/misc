@@ -1,13 +1,20 @@
 import os
 import re
-from datastructures import OrderedDict
+import codecs
+from config4py.datastructures import SortedDict as OrderedDict
+
+class ConfigError(Exception):
+    """General error when processing config"""
+
+class ConfigSyntaxError(ConfigError, SyntaxError):
+    """Syntax error when processing config"""
 
 class Config(OrderedDict):
     """Simple ini config"""
     section_cre     = re.compile(r'\s*\[(?P<name>[^]]+)\]\s*(?:#.*)?$')
     key_cre         = re.compile(r'(?P<key>[^:=\s\[][^:=]*)=\s*(?P<value>.*)$')
     empty_cre       = re.compile(r'\s*($|#|;)')
-    cont_cre        = re.compile(r'\s+(?P<value>.*)$')
+    cont_cre        = re.compile(r'\s+(?P<value>.+?)$')
     include_cre     = re.compile(r'%include (?P<name>.+?)\s*$')
 
     #@classmethod
@@ -24,14 +31,16 @@ class Config(OrderedDict):
         cfg = cls()
         section = cfg
         key = None
-        for line in iterable:
+        for lineno, line in enumerate(iterable):
             if cls.empty_cre.match(line):
                 continue
             m = cls.section_cre.match(line)
             if m:
                 name = m.group('name')
+                #XXX: we throw away cls() if there is an existing
+                #     section of the same name (which we will reuse)
+                section = cfg.setdefault(name, cls())
                 key = None # reset key
-                section = cfg[name] = cls()
                 continue
             m = cls.key_cre.match(line)
             if m:
@@ -41,17 +50,25 @@ class Config(OrderedDict):
             m = cls.cont_cre.match(line)
             if m:
                 if not key:
-                    raise ValueError("unexpected continuation line")
+                    raise ConfigError("unexpected continuation line")
                 else:
                     section[key] += line.strip()
                 continue
             m = cls.include_cre.match(line)
             if m:
                 path = m.group('name')
+                if not os.path.isabs(path):
+                    base_path = os.path.dirname(getattr(iterable, 'name', '.'))
+                    path = os.path.join(base_path, path)
                 subcfg = cls.read([path])
                 cfg.merge(subcfg)
                 continue
-            raise ValueError("Invalid line: %s" % line)
+            # XXX: delay to end
+            raise ConfigSyntaxError("Invalid line",
+                                    (getattr(iterable, 'name', '<unknown>'),
+                                     0,
+                                     lineno,
+                                     line))
         return cfg
     parse = classmethod(parse)
 
@@ -67,6 +84,7 @@ class Config(OrderedDict):
                 fileobj.close()
             main.merge(cfg)
         return main
+    read = classmethod(read)
 
     def merge(self, config):
         """Merge ``config`` in this config, replacing any existing values"""
@@ -99,7 +117,7 @@ class Config(OrderedDict):
                 except KeyError:
                     section = self.__class__()
                     self[key] = section
-                section.merge(value)
+                section.meld(value)
             else:
                 try:
                     self[key]
