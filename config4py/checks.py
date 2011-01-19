@@ -3,7 +3,7 @@
 import csv
 try:
     from io import BytesIO
-except ImportError:
+except ImportError: #pragma: nocover
     from cStringIO import StringIO as BytesIO
 from subprocess import list2cmdline
 from shlex import split
@@ -12,7 +12,7 @@ class BaseCheck(object):
     def __init__(self, default=None):
         self.default = default
 
-    def check(self, value, *args, **kwargs):
+    def check(self, value):
         """Check a value and return its conversion
 
         :raises: CheckError on failure
@@ -24,7 +24,7 @@ class BaseCheck(object):
         return str(value)
 
 class BoolCheck(BaseCheck):
-    def check(self, value, **kwargs):
+    def check(self, value):
         valid_bools = {
             'yes'  : True,
             'on'   : True,
@@ -49,8 +49,19 @@ class FloatCheck(BaseCheck):
         return "%f" % value
 
 class IntCheck(BaseCheck):
-    def check(self, value, min=None, max=None, base=10, default=None):
-        return int(value, base)
+    def __init__(self, default=None, min=None, max=None, base=10):
+        self.min = min
+        self.max = max
+        self.base = base
+        self.default = default
+
+    def check(self, value):
+        value = value or self.default
+        if isinstance(value, int):
+            return value
+        if value is None:
+            return value
+        return int(value, self.base)
 
     def format(self, value):
         return str(value)
@@ -63,8 +74,12 @@ class StringCheck(BaseCheck):
         return value
 
 class OptionCheck(BaseCheck):
-    def check(self, value, *options, **kwargs):
-        if value in options:
+    def __init__(self, *args, **kwargs):
+        self.options = args
+        self.default = kwargs.get('default')
+
+    def check(self, value):
+        if value in self.options:
             return value
         raise ValueError("invalid option %r" % value)
 
@@ -80,7 +95,9 @@ class ListCheck(BaseCheck):
             yield line.encode('utf-8')
     _utf8_encode = staticmethod(_utf8_encode)
 
-    def check(self, value, default=None):
+    def check(self, value):
+        if isinstance(value, list):
+            return value
         data = self._utf8_encode(BytesIO(value))
         reader = csv.reader(data, dialect='excel', delimiter=',',
                 skipinitialspace=True)
@@ -112,6 +129,7 @@ builtin_checks = (
     ('string', StringCheck),
     ('option', OptionCheck),
     ('list', ListCheck),
+    ('force_list', ListCheck),
     ('tuple', TupleCheck),
     ('cmdline', CmdlineCheck),
 )
