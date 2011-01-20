@@ -1,4 +1,5 @@
-from distutils.core import setup
+import sys
+from setuptools import setup
 from config4py import __version__ as version
 
 extra = {}
