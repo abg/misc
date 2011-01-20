@@ -125,6 +125,18 @@ class Config(OrderedDict):
                     # only add the value if it does not already exist
                     self[key] = value
 
+    def write(self, path, encoding='utf8'):
+        """Write this config to the requested file path"""
+        try:
+            write = path.write
+            write(str(self))
+        except AttributeError:
+            fileobj = codecs.open(path, 'w', encoding=encoding)
+            try:
+                fileobj.write(str(self))
+            finally:
+                fileobj.close()
+
     def __str__(self):
         """Convert this config to a string"""
         lines = []

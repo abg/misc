@@ -1,6 +1,9 @@
 """Test the basic config loader/parser"""
 import os
+import shutil
+import tempfile
 from textwrap import dedent
+from StringIO import StringIO
 from nose.tools import *
 from config4py import Config
 
@@ -92,3 +95,26 @@ def test_str():
 
     cfg = Config.parse(data.splitlines())
     assert_equals(str(cfg), data)
+
+
+def test_write():
+    path = os.path.join(os.path.dirname(__file__), 'data', 'mysqldump.conf')
+    cfg = Config.read([path])
+    dest = tempfile.mkdtemp()
+    try:
+        cfg.write(os.path.join(dest, 'foo.conf'))
+        Config.read([os.path.join(dest, 'foo.conf')])
+    finally:
+        shutil.rmtree(dest)
+
+def test_write_fileobj():
+    input1 = dedent("""
+    [section1]
+    key1 = value1
+    key2 = value2
+    """)
+    output = StringIO()
+    cfg = Config.parse(input1.splitlines())
+    cfg.write(output)
+    print output.getvalue()
+    Config.parse(output.getvalue().splitlines())
