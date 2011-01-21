@@ -76,7 +76,7 @@ class Config(OrderedDict):
 
         :param filenames: list of filenames to load
         :param encoding: character set encoding of each config file
-        :returns: list of filenames successfully parsed
+        :returns: config instance
         """
         main = cls()
         for path in filenames:
