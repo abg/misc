@@ -6,12 +6,23 @@ from config4py.checks import builtin_checks
 class Configspec(Config):
     """A configuration that can validate other configurations
     """
+    #: registry dictionary for resolving checks
+    registry = ()
+
     def __init__(self, *args, **kwargs):
         super(Configspec, self).__init__(*args, **kwargs)
         self.registry = dict(builtin_checks)
 
+    #XXX: improve docstring
     def validate(self, config):
-        """Validate a config against this configspec"""
+        """Validate a config against this configspec.
+
+        This method modifies ``config`` replacing option values with the
+        conversion provided by the associated check.
+
+        :param config: config instance to validate
+        :returns: validated config
+        """
         for key, value in self.iteritems():
             #XXX: value must be a Configspec if we want
             #     to recurse to more than 1 level
