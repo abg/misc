@@ -32,6 +32,8 @@ class Configspec(Config):
                     cfgsect = config[key]
                 except KeyError:
                     cfgsect = config.setdefault(key, config.__class__())
+                if not isinstance(value, Configspec):
+                    value = Configspec(value)
                 value.validate(cfgsect)
             else:
                 name, args, kwargs = CheckParser.parse(value)
