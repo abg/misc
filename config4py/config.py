@@ -18,16 +18,12 @@ class Config(OrderedDict):
     include_cre     = re.compile(r'%include (?P<name>.+?)\s*$')
 
     #@classmethod
-    def _parse_option(cls, match, optionxform):
-        key, value = match.group('key', 'value')
-        key = optionxform(key.strip())
-        value = value.strip()
-        return key, value
-    _parse_option = classmethod(_parse_option)
+    def parse(cls, iterable):
+        """Parse a sequence of lines and return the resulting ``Config`` instance.
 
-    #@classmethod
-    def parse(cls, iterable, optionxform=str):
-        """Parse an iterable of lines"""
+        :param iterable: any iterable object that yield lines of text
+        :returns: new ``Config`` instance
+        """
         cfg = cls()
         section = cfg
         key = None
@@ -44,7 +40,9 @@ class Config(OrderedDict):
                 continue
             m = cls.key_cre.match(line)
             if m:
-                key, value = cls._parse_option(m, optionxform)
+                key, value = m.group('key', 'value')
+                key = key.strip()
+                value = value.strip()
                 section[key] = value
                 continue
             m = cls.cont_cre.match(line)
@@ -73,10 +71,15 @@ class Config(OrderedDict):
     parse = classmethod(parse)
 
     #@classmethod
-    def read(cls, iterable, encoding='utf8'):
-        """Read a list of paths, load their configs and merge them together"""
+    def read(cls, filenames, encoding='utf8'):
+        """Read and parse a list of filenames.
+
+        :param filenames: list of filenames to load
+        :param encoding: character set encoding of each config file
+        :returns: list of filenames successfully parsed
+        """
         main = cls()
-        for path in iterable:
+        for path in filenames:
             fileobj = codecs.open(path, 'r', encoding=encoding)
             try:
                 cfg = cls.parse(fileobj)
@@ -86,9 +89,17 @@ class Config(OrderedDict):
         return main
     read = classmethod(read)
 
-    def merge(self, config):
-        """Merge ``config`` in this config, replacing any existing values"""
-        for key, value in config.iteritems():
+    def merge(self, src_config):
+        """Merge another config instance with this one.
+
+        Merging copies all options and subsections from the source config,
+        ``src_config``, into this config. Options from ``src_config`` will
+        overwrite existing options in this config.
+
+        :param src_config: ``Config`` instance to merge into this instance
+        :returns: self
+        """
+        for key, value in src_config.iteritems():
             if isinstance(value, Config):
                 try:
                     section = self[key]
@@ -104,8 +115,16 @@ class Config(OrderedDict):
                 self[key] = value
 
     def meld(self, config):
-        """Meld with ``config`` - only adding options that do not already
-        exist"""
+        """Meld another config instance with this one.
+
+        Merging copies all options and subsections from the source config,
+        ``src_config``, into this config. Unlike ``merge()``, existing options
+        in this config will always be preserved - ``meld()`` only adds new
+        options.
+
+        :param src_config: ``Config`` instance to meld into this instance
+        :returns: self
+        """
         for key, value in config.iteritems():
             if isinstance(value, Config):
                 try:
@@ -126,7 +145,15 @@ class Config(OrderedDict):
                     self[key] = value
 
     def write(self, path, encoding='utf8'):
-        """Write this config to the requested file path"""
+        """Write a representaton of the config to the specified filename.
+
+        The target filename will be written with the requested encoding.
+        ``filename`` can either be a path string or any file-like object with
+        a ``write(data)`` method.
+
+        :param path: filename or file-like object to serialize this config to
+        :param encoding: encoding to writes this config as
+        """
         try:
             write = path.write
             write(str(self))
@@ -136,6 +163,35 @@ class Config(OrderedDict):
                 fileobj.write(str(self))
             finally:
                 fileobj.close()
+
+    def optionxform(self, option):
+        """Transforms the option name ``option``
+
+        This method should be overriden in subclasses that want to alter
+        the default behavior.
+
+        :param option: option name
+        :returns: tranformed option
+        """
+        return str(option)
+
+    def sectionxform(self, section):
+        """Transforms the section name ``section``
+
+        This method should be overriden in subclasses that want to alter
+        the default behavior.
+
+        :param section: section name
+        :returns: transformed section name
+        """
+        return str(section)
+
+    def __setitem__(self, key, value):
+        if isinstance(value, self.__class__):
+            key = self.sectionxform(key)
+        elif isinstance(value, basestring):
+            key = self.optionxform(key)
+        super(Config, self).__setitem__(key, value)
 
     def __str__(self):
         """Convert this config to a string"""
