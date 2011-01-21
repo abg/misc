@@ -2,9 +2,9 @@
 
 import csv
 try:
-    from io import BytesIO
+    from io import StringIO
 except ImportError: #pragma: nocover
-    from cStringIO import StringIO as BytesIO
+    from cStringIO import StringIO
 from subprocess import list2cmdline
 from shlex import split
 
@@ -98,10 +98,10 @@ class ListCheck(BaseCheck):
     def check(self, value):
         if isinstance(value, list):
             return value
-        data = self._utf8_encode(BytesIO(value))
+        data = self._utf8_encode(StringIO(value))
         reader = csv.reader(data, dialect='excel', delimiter=',',
                 skipinitialspace=True)
-        return [cell for row in reader for cell in row ]
+        return [cell.decode('utf8') for row in reader for cell in row ]
 
     def format(self, value):
         result = BytesIO()
