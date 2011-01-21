@@ -1,10 +1,9 @@
 # parse.py
 import re
-from re import Scanner
-import logging
-
-LOG = logging.getLogger()
-logging.basicConfig(level=logging.FATAL)
+try:
+    Scanner = re.Scanner
+except AttributeError:
+    from config4py.pycompat import Scanner
 
 class Token(object):
     """Lexer token"""
@@ -26,6 +25,7 @@ class TokenGenerator(object):
     def __call__(self, scanner, value):
         return Token(value, self.token_id, self.conversion(value))
 
+
 class Lexer(object):
     def __init__(self, iterable):
         self.iterable = iter(iterable)
@@ -39,7 +39,6 @@ class Lexer(object):
     def next(self):
         try:
             tok = self.iterable.next()
-            #LOG.debug("Lexer: %r", tok)
             return tok
         except StopIteration:
             raise CheckError("Reached end-of-input when reading token")
