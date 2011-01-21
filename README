@@ -1,0 +1,54 @@
+config4py
+=========
+
+config4py is a simple config library that handles ini-like
+config files as python dicts.
+
+config4py supports configspecs in a very similar fashion to 
+_ConfigObj: http://www.voidspace.org.uk/python/configobj.html
+
+Examples
+++++++++
+
+Basic config syntax:
+
+simple.conf:
+
+  [config]
+  foo = bar
+  
+  # config4py supports %include directives
+  %include extended.conf
+
+extended.conf:
+
+  [config]
+  bar = baz
+  
+  [other]
+  boz = foobarbaz
+
+>>> from config4py import Config
+>>> Config.read(['simple.conf'])
+{'config': {'foo': u'override'}, 'other': {'boz': u'foo,bar,baz'}}
+
+
+Validate simple dictionary values:
+
+>>> from config4py import Config, Configspec
+>>> cfg = Config({ 'port' : '3306' })
+>>> cfgspec = Configspec({ 'port' : 'integer' })
+>>> cfgspec.validate(cfg)
+{'port': 3306}
+
+Validate a config file:
+
+example.conf:
+[example]
+exclude-list = foo, bar, baz
+
+>>> from config4py import Config, Configspec
+>>> cfg = Config.read(['example.conf'])
+>>> spec = Configspec({ 'example' : { 'exclude-list' : 'list' } })
+>>> spec.validate(cfg)
+{'example': {'exclude-list': [u'foo', u'bar', u'baz']}}
