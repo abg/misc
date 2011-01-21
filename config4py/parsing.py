@@ -69,6 +69,7 @@ def unquote(value):
 class CheckError(Exception): pass
 
 class CheckParser(object):
+    """Parse the check DSL supported by ``Configspec``"""
     T_ID        = 1
     T_STR       = 2
     T_NUM       = 4
@@ -98,10 +99,12 @@ class CheckParser(object):
 
     #@classmethod
     def parse(cls, check):
-        """Parse a Configspec check
+        """Parse a check
 
-        This method implements a very simple recursive descent parser to parse
-        a python like DSL defining a check for valid values in a config file
+        This is primarily used implicitly by ``Configspec`` to lookup checks by name
+        in its own registry.
+
+        :returns: tuple (check_name, args, kwargs)
         """
         tokens, remainder = cls.scanner.scan(check)
 
