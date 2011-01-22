@@ -1,6 +1,6 @@
 from nose.tools import *
-from ak47.options import parse, stringify, ParseError
-from ak47 import OrderedMultiDict
+from playground.options import parse, stringify, ParseError
+from playground import OrderedMultiDict
 
 my_cnf = """# a simple example my.cnf
 

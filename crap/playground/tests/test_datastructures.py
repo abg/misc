@@ -1,6 +1,6 @@
 import sys
 from nose.tools import *
-from ak47.datastructures import OrderedMultiDict
+from playground.datastructures import OrderedMultiDict
 
 def test_is_subclass():
     o = OrderedMultiDict()

@@ -4,7 +4,7 @@ values per key in some semi-sane way
 
 import os
 import re
-from ak47.datastructures import OrderedMultiDict
+from datastructures import OrderedMultiDict
 
 __all__ = [
     'ParseError',
@@ -14,8 +14,8 @@ __all__ = [
 
 class ParseError(Exception):
     """Raised when there is an error parsing a my.cnf file
-    
-    :attribute config: config that would have been returned, were there no 
+
+    :attribute config: config that would have been returned, were there no
                        parse errors
     :attribute errors: list of SyntaxErrors that were encountered
     """
